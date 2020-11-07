@@ -41,7 +41,7 @@ public class Download {
     /**
      * 爬取最大数量
      */
-    private static final int COUNT=100;
+    private static final int COUNT=603;
     /**
      * 爬取起始值
      */
@@ -51,8 +51,11 @@ public class Download {
         System.setProperty("webdriver.chrome.driver", CHROME_DRIVER_PATH);
         WebDriver driver = new ChromeDriver();
         driver.get(YOUTUBE_URL);
-        getUrl(driver);
+        //Thread.sleep(1000*60);
+        //getUrl(driver);
         download(driver);
+        Thread.sleep(1000);
+        driver.close();
     }
 
     private static void download(WebDriver driver) throws InterruptedException, IOException {
@@ -69,14 +72,21 @@ public class Download {
                     break;
                 }
             }
+            Thread.sleep(100);
+            driver.findElement(By.id("ytUrl")).sendKeys(Keys.CONTROL,"a");
+            Thread.sleep(1000);
             driver.findElement(By.id("ytUrl")).sendKeys(urls.get(i));
-            driver.findElement(By.id("convertBtn")).click();
+            System.out.println(urls.get(i));
+            Thread.sleep(1000);
+            driver.findElement(By.id("ytUrl")).sendKeys(Keys.ENTER);
+            //driver.findElement(By.id("convertBtn")).click();
             while (true){
-                if (isJudgingElement(driver,By.linkText("Download"))){
+                if (isJudgingElement(driver,By.xpath("//td/a[@type='button']"))){
                     break;
                 }
             }
-            List<WebElement> webElements=driver.findElements(By.linkText("Download"));
+            Thread.sleep(100);
+            List<WebElement> webElements=driver.findElements(By.xpath("//td/a[@type='button']"));
             List<WebElement> webElementList=webElements.stream().filter(webElement->webElement.getAttribute("onclick").contains("720p")).collect(Collectors.toList());
             if (webElementList.isEmpty()){
                 webElementList=webElements.stream().filter(webElement->webElement.getAttribute("onclick").contains("360p")).collect(Collectors.toList());
@@ -88,6 +98,7 @@ public class Download {
                 webElementList.get(0).click();
             } else {
                 failList.add(urls.get(i));
+                System.out.println("fail:"+urls.get(i));
                 continue;
             }
             while (true){
@@ -95,10 +106,16 @@ public class Download {
                     break;
                 }
             }
+            Thread.sleep(100);
             String downloadHref=driver.findElement(By.linkText("Download")).getAttribute("href");
             driver.navigate().to(downloadHref);
             Thread.sleep(1000);
             driver.navigate().back();
+            driver.navigate().refresh();
+            Thread.sleep(5000);
+            if(i>0 && i%5==0){
+                Thread.sleep(1000*60*3);
+            }
         }
         FileUtil.writeUtf8Lines(failList,FAIL_FILE_PATH);
     }
@@ -115,6 +132,10 @@ public class Download {
                 actions.sendKeys(Keys.DOWN).perform();
                 Thread.sleep(50);
                 webElements=driver.findElements(By.xpath("//a[@id='video-title']"));
+//                if (webElements.size()%100==0){
+//                    System.out.println(webElements.size());
+//                }
+                System.out.println("页面视频数量："+webElements.size());
             }
 
             for (int i=START;i<webElements.size();i++){
