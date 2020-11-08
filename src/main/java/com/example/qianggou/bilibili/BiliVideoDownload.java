@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * 项目名称：qianggou
@@ -43,10 +44,19 @@ public class BiliVideoDownload {
      */
     private static int RETRY_TIME = 10;
 
-    private static List<String> failList = new ArrayList<>();
+    //private static List<String> failList = new ArrayList<>();
 
     public static void main(String[] args) {
-        htmlParser();
+        File readFile = new File("C:\\Users\\10676\\Desktop\\bilibiliUrl.txt");
+        List<String> contents = FileUtil.readUtf8Lines(readFile);
+        System.out.println(contents.size());
+        List<String> list = downloadedList();
+        System.out.println(list.size());
+        for (String s : list) {
+            contents = contents.stream().filter(content -> !content.contains(s)).collect(Collectors.toList());
+        }
+        System.out.println(contents.size());
+        //htmlParser();
     }
 
     /**
@@ -55,6 +65,10 @@ public class BiliVideoDownload {
     private static void htmlParser() {
         File readFile = new File("C:\\Users\\10676\\Desktop\\bilibiliUrl.txt");
         List<String> contents = FileUtil.readUtf8Lines(readFile);
+        List<String> downloadedList = downloadedList();
+        for (String s : downloadedList) {
+            contents = contents.stream().filter(content -> !content.contains(s)).collect(Collectors.toList());
+        }
 
         for (int i = START; i < (Math.min(contents.size(), END)); i++) {
             if ("".equals(contents.get(i)) || contents.get(i) == null) continue;
@@ -78,7 +92,7 @@ public class BiliVideoDownload {
             getVideoInfo(videoInfo, url);
         }
         //FileUtil.writeUtf8Lines(failList,"C:\\Users\\10676\\Desktop\\failurl.txt");
-        FileUtil.appendUtf8Lines(failList, "C:\\Users\\10676\\Desktop\\failurl.txt");
+        //FileUtil.appendUtf8Lines(failList, "C:\\Users\\10676\\Desktop\\failurl.txt");
     }
 
     /**
@@ -119,6 +133,10 @@ public class BiliVideoDownload {
                 videoRetryTime--;
             }
             video.videoSize = videoRes.header("Content-Range").split("/")[1];
+            if (Integer.parseInt(video.videoSize) > 1024 * 1024 * 1024) {
+                System.out.println("文件大于1G！");
+                return;
+            }
 
             //获取音频基本信息
             JSONArray audioInfoArr = videoInfo.getJSONObject("data").getJSONObject("dash").getJSONArray("audio");
@@ -148,7 +166,9 @@ public class BiliVideoDownload {
             downloadFile(video, url);
         } catch (Exception e) {
             System.out.println(e.getMessage() + "------" + video.videoName);
+            List<String> failList = new ArrayList<>();
             failList.add(",href=" + url);
+            FileUtil.appendUtf8Lines(failList, "C:\\Users\\10676\\Desktop\\failurl.txt");
             return;
             //throw new RuntimeException("请求失败");
         }
@@ -223,6 +243,19 @@ public class BiliVideoDownload {
             e.printStackTrace();
         }
 
+    }
+
+    private static List<String> downloadedList() {
+        List<String> downloadedList = new ArrayList<>();
+        String path = "D:\\baidu\\BaiduNetdiskDownload\\asmr\\未发\\bilibili";
+        File[] files = new File(path).listFiles();
+        assert files != null;
+        for (File file : files) {
+            if (file.isFile()) {
+                downloadedList.add(file.getName().substring(0, file.getName().indexOf("_哔哩哔哩 (゜-゜)つロ 干杯~-bilibili.mp4")));
+            }
+        }
+        return downloadedList;
     }
 }
 
