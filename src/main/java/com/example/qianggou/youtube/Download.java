@@ -27,31 +27,31 @@ public class Download {
      */
     private static final String YOUTUBE_URL="https://www.youtube.com/results?search_query=%E4%B8%AD%E6%96%87asmr";
 
-    private static final String DOWNLOAD_URL="https://www.youtubeconverter.io/en6";
+    private static final String DOWNLOAD_URL = "https://www.youtubeconverter.io/en6";
     /**
      * chromedriver路径
      */
-    private static final String CHROME_DRIVER_PATH = "C:\\Users\\T480\\Desktop\\chromedriver.exe";
+    private static final String CHROME_DRIVER_PATH = "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chromedriver.exe";
     /**
      * url存储路径
      */
-    private static final String URL_FILE_PATH="C:\\Users\\T480\\Desktop\\url.txt";
+    private static final String URL_FILE_PATH = "C:\\Users\\10676\\Desktop\\url.txt";
 
-    private static final String FAIL_FILE_PATH="C:\\Users\\T480\\Desktop\\failurl.txt";
+    private static final String FAIL_FILE_PATH = "C:\\Users\\10676\\Desktop\\failurl.txt";
     /**
      * 爬取最大数量
      */
-    private static final int COUNT=603;
+    private static final int COUNT = 603;
     /**
      * 爬取起始值
      */
-    private static final int START=0;
+    private static final int START = 91;
 
     public static void main(String[] args) throws IOException, InterruptedException {
         System.setProperty("webdriver.chrome.driver", CHROME_DRIVER_PATH);
         WebDriver driver = new ChromeDriver();
         driver.get(YOUTUBE_URL);
-        //Thread.sleep(1000*60);
+        Thread.sleep(1000 * 60);
         //getUrl(driver);
         download(driver);
         Thread.sleep(1000);
@@ -80,6 +80,7 @@ public class Download {
             Thread.sleep(1000);
             driver.findElement(By.id("ytUrl")).sendKeys(Keys.ENTER);
             //driver.findElement(By.id("convertBtn")).click();
+            Thread.sleep(1000);
             while (true){
                 if (isJudgingElement(driver,By.xpath("//td/a[@type='button']"))){
                     break;
@@ -98,23 +99,33 @@ public class Download {
                 webElementList.get(0).click();
             } else {
                 failList.add(urls.get(i));
-                System.out.println("fail:"+urls.get(i));
+                System.out.println("fail:" + urls.get(i));
                 continue;
             }
-            while (true){
-                if (isJudgingElement(driver,By.linkText("Convert next"))){
+            while (true) {
+                if (isJudgingElement(driver, By.linkText("Convert next"))) {
                     break;
                 }
             }
+            if (!isJudgingElement(driver, By.linkText("Download"))) {
+                failList.add(urls.get(i));
+                driver.navigate().back();
+                driver.navigate().refresh();
+                Thread.sleep(5000);
+                if (i > 0 && i % 5 == 0) {
+                    Thread.sleep(1200 * 60 * 4);
+                }
+                continue;
+            }
             Thread.sleep(100);
-            String downloadHref=driver.findElement(By.linkText("Download")).getAttribute("href");
+            String downloadHref = driver.findElement(By.linkText("Download")).getAttribute("href");
             driver.navigate().to(downloadHref);
             Thread.sleep(1000);
             driver.navigate().back();
             driver.navigate().refresh();
             Thread.sleep(5000);
-            if(i>0 && i%5==0){
-                Thread.sleep(1000*60*3);
+            if (i > 0 && i % 5 == 0) {
+                Thread.sleep(1200 * 60 * 4);
             }
         }
         FileUtil.writeUtf8Lines(failList,FAIL_FILE_PATH);
