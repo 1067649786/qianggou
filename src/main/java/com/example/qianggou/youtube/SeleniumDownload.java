@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
  * @Author ygy
  * @Date 2020/11/6
  */
-public class Download {
+public class SeleniumDownload {
 
     /**
      * youtube搜索后页面url

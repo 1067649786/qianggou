@@ -1,6 +1,8 @@
 package com.example.qianggou.bilibili;
 
+import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.lang.UUID;
 import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
 import cn.hutool.json.JSONArray;
@@ -29,15 +31,15 @@ public class BiliVideoDownload {
     /**
      * ffmpeg位置
      */
-    private static final String FFMPEG_PATH = "D:\\baidu\\BaiduNetdiskDownload\\ffmpeg\\bin\\ffmpeg.exe";
+    private static final String FFMPEG_PATH = "D:\\ffmpeg\\bin\\ffmpeg.exe";
 
     private static String USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Safari/537.36";
 
-    private static String SAVE_PATH = "D:\\baidu\\BaiduNetdiskDownload\\asmr\\未发\\bilibili";
+    private static String SAVE_PATH = "D:\\bilibili";
 
-    private static int START = 50;
+    private static int START = 100;
 
-    private static int END = 100;
+    private static int END = 906;
 
     /**
      * 重试次数
@@ -47,39 +49,67 @@ public class BiliVideoDownload {
     //private static List<String> failList = new ArrayList<>();
 
     public static void main(String[] args) {
-        File readFile = new File("C:\\Users\\10676\\Desktop\\bilibiliUrl.txt");
-        List<String> contents = FileUtil.readUtf8Lines(readFile);
-        System.out.println(contents.size());
-        List<String> list = downloadedList();
-        System.out.println(list.size());
-        for (String s : list) {
-            contents = contents.stream().filter(content -> !content.contains(s)).collect(Collectors.toList());
-        }
-        System.out.println(contents.size());
+//        File readFile = new File("C:\\Users\\T480\\Desktop\\bilibiliUrl.txt");
+//        List<String> contents = FileUtil.readUtf8Lines(readFile);
+//        System.out.println(contents.size());
+//        List<String> list = downloadedList();
+//        System.out.println(list.size());
+//        for (String s : list) {
+//            contents = contents.stream().filter(content -> !content.contains(s)).collect(Collectors.toList());
+//        }
+//        System.out.println(contents.size());
         //htmlParser();
+        rename();
+    }
+
+    private static void rename(){
+        File file=new File("D:\\asmr\\bilibili");
+        File[] files=file.listFiles();
+        for (File f:files){
+            FileUtil.rename(f,f.getName().replace("_哔哩哔哩 (゜-゜)つロ 干杯~-bilibili",""),false);
+        }
     }
 
     /**
      * 解析html获取相关信息
      */
     private static void htmlParser() {
-        File readFile = new File("C:\\Users\\10676\\Desktop\\bilibiliUrl.txt");
+        File readFile = new File("C:\\Users\\T480\\Desktop\\bilibiliUrl.txt");
         List<String> contents = FileUtil.readUtf8Lines(readFile);
         List<String> downloadedList = downloadedList();
-        for (String s : downloadedList) {
-            contents = contents.stream().filter(content -> !content.contains(s)).collect(Collectors.toList());
-        }
-
+        System.out.println(downloadedList.size());
         for (int i = START; i < (Math.min(contents.size(), END)); i++) {
             if ("".equals(contents.get(i)) || contents.get(i) == null) continue;
             String url = contents.get(i).substring(contents.get(i).indexOf(",href=") + 6);
-            HttpResponse res = HttpRequest.get(url).timeout(2000).execute();
+            HttpResponse res=null;
+            try{
+                res = HttpRequest.get(url).timeout(2000).execute();
+            } catch (Exception e){
+                System.out.println("连接超时");
+                continue;
+            }
             String html = res.body();
             Document document = Jsoup.parse(html);
             Element title = document.getElementsByTag("title").first();
             VideoInfo videoInfo = new VideoInfo();
             //视频名称
             videoInfo.videoName = title.text();
+
+            if (new File(SAVE_PATH + File.separator + videoInfo.videoName + ".mp4").exists()){
+                continue;
+            }
+            if (videoInfo.videoName.contains("|")){
+                videoInfo.videoName=videoInfo.videoName.replaceAll("\\|","&");
+            }
+            if (videoInfo.videoName.contains(">")){
+                videoInfo.videoName=videoInfo.videoName.replaceAll(">","&");
+            }
+            if (videoInfo.videoName.contains("<")){
+                videoInfo.videoName=videoInfo.videoName.replaceAll("<","&");
+            }
+            if (videoInfo.videoName.contains("/")){
+                videoInfo.videoName=videoInfo.videoName.replaceAll("/","&");
+            }
             //截取视频信息
             Pattern pattern = Pattern.compile("(?<=<script>window.__playinfo__=).*?(?=</script>)");
             Matcher matcher = pattern.matcher(html);
@@ -87,7 +117,8 @@ public class BiliVideoDownload {
                 videoInfo.videoInfo = new JSONObject(matcher.group());
             } else {
                 System.out.println("未匹配到视频信息，退出程序!");
-                return;
+                continue;
+                //return;
             }
             getVideoInfo(videoInfo, url);
         }
@@ -168,7 +199,7 @@ public class BiliVideoDownload {
             System.out.println(e.getMessage() + "------" + video.videoName);
             List<String> failList = new ArrayList<>();
             failList.add(",href=" + url);
-            FileUtil.appendUtf8Lines(failList, "C:\\Users\\10676\\Desktop\\failurl.txt");
+            FileUtil.appendUtf8Lines(failList, "C:\\Users\\T480\\Desktop\\failurl.txt");
             return;
             //throw new RuntimeException("请求失败");
         }
@@ -219,6 +250,12 @@ public class BiliVideoDownload {
     private static void mergeFiles(File videoFile, File audioFile, VideoInfo videoInfo) {
         System.out.println("--------------开始合并音视频--------------");
         String outFile = SAVE_PATH + File.separator + videoInfo.videoName + ".mp4";
+        if (new File(outFile).exists()){
+            FileUtil.del(videoFile);
+            FileUtil.del(audioFile);
+            System.out.println("---------------音视频已存在----------");
+            return;
+        }
         List<String> commend = new ArrayList<>();
         commend.add(FFMPEG_PATH);
         commend.add("-i");
@@ -247,12 +284,12 @@ public class BiliVideoDownload {
 
     private static List<String> downloadedList() {
         List<String> downloadedList = new ArrayList<>();
-        String path = "D:\\baidu\\BaiduNetdiskDownload\\asmr\\未发\\bilibili";
+        String path = "D:\\bilibili";
         File[] files = new File(path).listFiles();
         assert files != null;
         for (File file : files) {
             if (file.isFile()) {
-                downloadedList.add(file.getName().substring(0, file.getName().indexOf("_哔哩哔哩 (゜-゜)つロ 干杯~-bilibili.mp4")));
+                downloadedList.add(file.getName().replace(".mp4",""));
             }
         }
         return downloadedList;
